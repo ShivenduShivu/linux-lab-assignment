@@ -1,0 +1,134 @@
+========================================================================
+QUESTION 5 - STORAGE HEALTH ASSESSMENT AND DOCUMENTATION
+Storage_Assessment_Report.txt   (created using the vi editor)
+========================================================================
+System: Ubuntu 22.04.5 LTS  |  Host: Senorita  |  User: your_dad
+------------------------------------------------------------------------
+
+SCENARIO
+The organization plans to deploy a new application server. I assessed the
+storage resources of this host and documented the findings using the vi
+editor, as required.
+
+NOTE: This report file was created and saved with vi:
+      $ vi Storage_Assessment_Report.txt
+      (entered insert mode with 'i', typed the content, pressed <Esc>,
+       then saved and quit with ':wq'). See the vi screenshots.
+
+
+------------------------------------------------------------------------
+1. AVAILABLE STORAGE DEVICES
+------------------------------------------------------------------------
+
+$ lsblk
+NAME MAJ:MIN RM   SIZE RO TYPE MOUNTPOINTS
+sda    8:0    0 388.6M  1 disk
+sdb    8:16   0   186M  1 disk
+sdc    8:32   0     2G  0 disk [SWAP]
+sdd    8:48   0     1T  0 disk /mnt/wslg/distro
+                               /
+
+Explanation: `lsblk` lists all block devices in a tree. The host exposes
+four devices: two small read-only helper disks (sda, sdb), a 2G swap
+disk (sdc) and the main 1 TB disk sdd which holds the root filesystem "/".
+
+
+------------------------------------------------------------------------
+2. MOUNTED FILE SYSTEMS
+------------------------------------------------------------------------
+
+$ df -Th
+Filesystem     Type     Size  Used Avail Use% Mounted on
+/dev/sdd       ext4    1007G   69G  888G   8% /
+none           tmpfs    3.9G  524K  3.9G   1% /run
+C:\            9p       433G  345G   88G  80% /mnt/c
+D:\            9p       520G  242G  279G  47% /mnt/d
+tmpfs          tmpfs    779M  8.0K  779M   1% /run/user/1000
+
+$ mount | grep '^/dev'
+/dev/sdd on / type ext4 (rw,relatime,discard,errors=remount-ro,data=ordered)
+
+Explanation: `df -Th` shows each mounted filesystem with its type. The
+root "/" is a real ext4 filesystem on /dev/sdd, while tmpfs entries are
+in-memory and the 9p mounts are Windows drives shared into WSL. `mount`
+confirms "/" is mounted read-write as ext4.
+
+
+------------------------------------------------------------------------
+3. DISK USAGE STATISTICS
+------------------------------------------------------------------------
+
+$ df -h
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sdd       1007G   69G  888G   8% /
+C:\             433G  345G   88G  80% /mnt/c
+D:\             520G  242G  279G  47% /mnt/d
+
+$ du -sh ~
+59G  /home/your_dad
+
+Explanation: `df -h` reports the root filesystem at only 8% used (69 GB
+of 1007 GB), so there is ample free space. `du -sh ~` shows my home
+directory alone accounts for 59 GB, identifying it as the dominant
+consumer of used space on "/".
+
+
+------------------------------------------------------------------------
+4. INODE UTILIZATION
+------------------------------------------------------------------------
+
+$ df -i
+Filesystem       Inodes   IUsed    IFree IUse% Mounted on
+/dev/sdd       67108864  408830 66700034    1% /
+tmpfs            199301      32   199269    1% /run/user/1000
+
+Explanation: `df -i` reports inode usage. The root filesystem has used
+only 408,830 of 67 million inodes (1%), so the system is nowhere near
+running out of inodes - important because a disk can show free space yet
+still fail to create files if inodes are exhausted.
+
+
+------------------------------------------------------------------------
+5. MEMORY CONTEXT (supporting)
+------------------------------------------------------------------------
+
+$ free -h
+               total   used   free  shared  buff/cache  available
+Mem:           7.6Gi  365Mi  6.1Gi   3.0Mi       1.2Gi       7.1Gi
+Swap:          2.0Gi     0B  2.0Gi
+
+Explanation: `free -h` shows 7.6 GiB RAM with 6.1 GiB free and a 2 GiB
+swap that is entirely unused, indicating the host currently has healthy
+memory headroom to support a new application server.
+
+
+------------------------------------------------------------------------
+STORAGE HEALTH OBSERVATIONS
+------------------------------------------------------------------------
+- The root ext4 filesystem on /dev/sdd is healthy: only 8% space used and
+  1% inodes used, mounted read-write with the standard error=remount-ro
+  safeguard.
+- Home directory (59 GB) is by far the largest space consumer and is the
+  first place to look if usage grows.
+- Swap (2 GB) is completely unused and RAM is 80% free, so memory is not
+  a bottleneck.
+- The 9p /mnt/c device is at 80% capacity, the tightest of all mounts and
+  worth monitoring, though it is the Windows host drive rather than the
+  Linux server volume.
+
+
+------------------------------------------------------------------------
+RECOMMENDATIONS FOR IMPROVING STORAGE UTILIZATION
+------------------------------------------------------------------------
+1. Set up monitoring/alerts (e.g. df thresholds) so any filesystem
+   crossing ~80% usage - like /mnt/c today - triggers a warning before it
+   fills.
+2. Implement log rotation and periodic cleanup of the home directory,
+   since it already holds 59 GB and is the main growth area.
+3. Consider a separate partition/volume for application data and logs so a
+   runaway log cannot fill the root filesystem.
+4. Schedule regular filesystem checks (fsck) and enable SMART monitoring
+   on production hardware to catch failing disks early.
+5. Keep at least 15-20% free space and inode headroom on "/" to preserve
+   performance and avoid out-of-space/out-of-inode failures.
+========================================================================

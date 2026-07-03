@@ -1,0 +1,20 @@
+# Question 3 - File System and Link Analysis
+
+echo "This is the original file content." > original.txt
+cat original.txt
+
+ln    original.txt hardlink.txt     # hard link (same inode)
+ln -s original.txt symlink.txt      # symbolic link (path pointer)
+
+ls -li                              # show inode numbers + link counts
+stat original.txt                   # metadata: Links: 2
+
+cat original.txt
+cat hardlink.txt
+cat symlink.txt
+
+rm original.txt                     # delete the original
+ls -li                              # hardlink link count drops to 1
+cat hardlink.txt                    # STILL works (data survives)
+cat symlink.txt                     # BROKEN - No such file or directory
+file hardlink.txt symlink.txt       # classify both links

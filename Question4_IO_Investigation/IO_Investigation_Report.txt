@@ -1,0 +1,153 @@
+========================================================================
+QUESTION 4 - FILE ACCESS AND I/O INVESTIGATION
+IO_Investigation_Report.txt
+========================================================================
+System: Ubuntu 22.04.5 LTS  |  User: your_dad
+------------------------------------------------------------------------
+
+SCENARIO
+An application is experiencing logging issues. I investigated how Linux
+handles file access, file descriptors, output/error redirection and
+resource limits to understand the I/O behaviour behind the logs.
+
+
+------------------------------------------------------------------------
+1. OUTPUT REDIRECTION (stdout)
+------------------------------------------------------------------------
+
+$ echo "Application started successfully" > app.log
+$ cat app.log
+Application started successfully
+
+Explanation: The `>` operator redirects standard output (fd 1) into
+app.log, creating/overwriting it. `cat` confirms the message was written
+to the file instead of the screen - the basic mechanism an app uses to
+log.
+
+$ echo "Processing records" >> app.log
+$ cat app.log
+Application started successfully
+Processing records
+
+Explanation: The `>>` operator APPENDS to the file rather than
+overwriting it, so both log lines are preserved. Using >> instead of >
+is exactly how a logger avoids destroying previous entries.
+
+
+------------------------------------------------------------------------
+2. ERROR REDIRECTION (stderr)
+------------------------------------------------------------------------
+
+$ ls /nonexistent_dir 2> error.log
+$ cat error.log
+ls: cannot access '/nonexistent_dir': No such file or directory
+
+Explanation: `2>` redirects standard error (fd 2) into error.log. The
+error message was captured in the file and did NOT appear on screen,
+showing that stdout and stderr are separate streams - a key insight for
+diagnosing logging issues.
+
+
+------------------------------------------------------------------------
+3. COMBINED REDIRECTION (stdout + stderr)
+------------------------------------------------------------------------
+
+$ ls app.log /nonexistent_dir > combined.log 2>&1
+$ cat combined.log
+ls: cannot access '/nonexistent_dir': No such file or directory
+app.log
+
+Explanation: `> combined.log 2>&1` sends stdout to the file and then
+points stderr to the same place as stdout, so both normal output and
+errors land in one file. This is the standard pattern for capturing a
+complete application log.
+
+
+------------------------------------------------------------------------
+4. FILE DESCRIPTORS OBSERVED
+------------------------------------------------------------------------
+
+$ ls -l /proc/self/fd
+lr-x------ ... 0 -> pipe:[6510]
+l-wx------ ... 1 -> pipe:[6511]
+l-wx------ ... 2 -> pipe:[6512]
+
+Explanation: Every process exposes its open file descriptors under
+/proc/<pid>/fd. Descriptor 0 is standard input, 1 is standard output and
+2 is standard error - the three streams every program starts with.
+
+
+------------------------------------------------------------------------
+5. OPEN FILES IDENTIFIED (holding a file open)
+------------------------------------------------------------------------
+
+$ exec 3< app.log          # open app.log on a custom descriptor 3
+$ ls -l /proc/$$/fd
+lr-x------ ... 3 -> /home/your_dad/linux_lab/io_lab/app.log
+
+$ lsof -p $$ | head
+COMMAND PID     USER   FD   TYPE DEVICE SIZE/OFF   NODE NAME
+bash    478 your_dad  cwd    DIR   8,48     4096   2017 /home/your_dad/linux_lab/io_lab
+bash    478 your_dad  rtd    DIR   8,48        2      2 /
+bash    478 your_dad  txt    REG   8,48  1396520   1462 /usr/bin/bash
+...
+$ exec 3<&-                 # close descriptor 3
+
+Explanation: After opening app.log on descriptor 3, /proc/$$/fd shows fd
+3 mapped to the real file path, and `lsof` lists every file the process
+currently holds open (its binary, libraries, cwd, and our log). `lsof`
+is the primary tool for finding which process is keeping a log file open
+- a common cause of logging problems.
+
+
+------------------------------------------------------------------------
+6. RESOURCE LIMITS OBSERVED
+------------------------------------------------------------------------
+
+$ ulimit -a
+core file size          (blocks, -c) 0
+file size               (blocks, -f) unlimited
+max locked memory       (kbytes, -l) 65536
+open files                      (-n) 10240
+stack size              (kbytes, -s) 8192
+max user processes              (-u) 31101
+...
+
+$ ulimit -n
+10240
+
+Explanation: `ulimit -a` lists per-process resource limits. The "open
+files" limit of 10240 caps how many file descriptors this process may
+hold at once; if an application leaks descriptors and hits this ceiling,
+it can no longer open log files - a frequent root cause of logging
+failures.
+
+
+------------------------------------------------------------------------
+EXPLANATION: HOW LINUX MANAGES FILE I/O
+------------------------------------------------------------------------
+In Linux, "everything is a file". When a process opens a file it receives
+a small integer file descriptor that indexes into a per-process table;
+the kernel maps that descriptor through an open-file table to the actual
+inode. Each process starts with three standard descriptors - stdin(0),
+stdout(1), stderr(2) - which the shell can redirect independently using
+>, >>, 2> and 2>&1. The kernel enforces per-process limits (ulimit) such
+as the maximum number of open descriptors, and tools like /proc/<pid>/fd
+and lsof let an administrator inspect exactly which files a process
+holds. Understanding this pipeline explains where logging can break:
+wrong stream redirected, file kept open by another process, or the open
+-file limit exhausted.
+
+
+------------------------------------------------------------------------
+TECHNICAL OBSERVATIONS
+------------------------------------------------------------------------
+- stdout and stderr are independent: the error only appeared in error.log
+  because it travels on fd 2, proving misdirected streams can hide logs.
+- 2>&1 successfully merged both streams into one file, the correct way to
+  capture a full log.
+- The process's fd table (0/1/2 + custom fd 3) was directly observable
+  via /proc/$$/fd and lsof.
+- The open-files limit is 10240; exhausting it would stop the app from
+  writing new logs, a plausible cause of the reported logging issue.
+========================================================================

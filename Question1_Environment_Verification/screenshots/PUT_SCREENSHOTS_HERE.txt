@@ -1,0 +1,1 @@
+Place your terminal screenshots for this question in this folder (e.g. 01_whoami.png, 02_id.png ...).

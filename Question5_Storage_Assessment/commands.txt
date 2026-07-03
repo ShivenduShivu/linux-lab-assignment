@@ -1,0 +1,12 @@
+# Question 5 - Storage Health Assessment
+# IMPORTANT: The report itself must be created with vi (screenshot that).
+#   vi Storage_Assessment_Report.txt
+#   press i  -> type content -> press Esc -> type :wq -> Enter
+
+lsblk                       # available storage/block devices
+df -Th                      # mounted filesystems + type
+mount | grep '^/dev'        # real device mounts
+df -h                       # disk usage statistics
+du -sh ~                    # biggest space consumer (home)
+df -i                       # inode utilization
+free -h                     # memory context (supporting)

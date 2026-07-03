@@ -1,0 +1,22 @@
+# Question 4 - File Access and I/O Investigation
+
+echo "Application started successfully" > app.log   # stdout redirect
+cat app.log
+echo "Processing records" >> app.log                # append
+cat app.log
+
+ls /nonexistent_dir 2> error.log                    # stderr redirect
+cat error.log
+
+ls app.log /nonexistent_dir > combined.log 2>&1     # both streams
+cat combined.log
+
+ls -l /proc/self/fd                                 # fd 0,1,2
+
+exec 3< app.log                                     # open file on fd 3
+ls -l /proc/$$/fd
+lsof -p $$ | head -n 15                              # open files of shell
+exec 3<&-                                            # close fd 3
+
+ulimit -a                                            # resource limits
+ulimit -n                                            # max open files

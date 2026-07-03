@@ -1,0 +1,12 @@
+# Question 1 - Linux Environment Verification
+# Run each command in order and screenshot the terminal.
+
+whoami                 # username
+id                     # uid, gid, all groups (numeric)
+groups                 # group names
+echo $SHELL            # current shell
+pwd                    # current working directory
+ls -l                  # files/directories in workspace
+ping -c 3 8.8.8.8      # network connectivity test
+hostname               # machine name
+uname -a               # kernel / architecture

@@ -1,0 +1,132 @@
+========================================================================
+QUESTION 1 - LINUX ENVIRONMENT VERIFICATION
+Environment_Report.txt
+========================================================================
+System: Ubuntu 22.04.5 LTS  |  Host: Senorita  |  User: your_dad
+------------------------------------------------------------------------
+
+SCENARIO
+As a newly joined Linux support engineer, before accessing company
+resources I verified my Linux environment and user account details.
+
+
+------------------------------------------------------------------------
+1. USERNAME AND GROUPS
+------------------------------------------------------------------------
+
+$ whoami
+your_dad
+
+Explanation: The `whoami` command prints the effective username of the
+currently logged-in account. It confirms I am operating as the user
+"your_dad", not as root or another account.
+
+$ id
+uid=1000(your_dad) gid=1000(your_dad) groups=1000(your_dad),4(adm),
+20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),
+46(plugdev),117(netdev),1001(docker)
+
+Explanation: `id` shows the numeric user ID (uid=1000), primary group
+ID (gid=1000) and every supplementary group. Membership in `sudo` means
+this account can run privileged commands, and `docker` allows container
+management.
+
+$ groups
+your_dad adm dialout cdrom floppy sudo audio dip video plugdev netdev docker
+
+Explanation: `groups` lists only the group names the user belongs to,
+which is a quick, human-readable view of the same membership `id`
+reports numerically. Group membership is what governs my access to
+shared resources and devices.
+
+
+------------------------------------------------------------------------
+2. CURRENT SHELL
+------------------------------------------------------------------------
+
+$ echo $SHELL
+/bin/bash
+
+Explanation: The $SHELL environment variable holds the path to my login
+shell. The output confirms I am using the Bash shell, which determines
+the command syntax and scripting features available to me.
+
+
+------------------------------------------------------------------------
+3. CURRENT WORKING DIRECTORY
+------------------------------------------------------------------------
+
+$ pwd
+/home/your_dad/linux_lab/workspace
+
+Explanation: `pwd` (print working directory) shows the absolute path of
+the directory I am currently in. This confirms my workspace location so
+that relative commands act on the intended files.
+
+
+------------------------------------------------------------------------
+4. FILES AND DIRECTORIES IN WORKSPACE
+------------------------------------------------------------------------
+
+$ ls -l
+total 4
+drwxr-xr-x 2 your_dad your_dad 4096 Jul  3 15:14 docs
+-rw-r--r-- 1 your_dad your_dad    0 Jul  3 15:14 fileA.txt
+-rw-r--r-- 1 your_dad your_dad    0 Jul  3 15:14 fileB.txt
+
+Explanation: `ls -l` produces a long listing showing permissions, owner,
+group, size and modification time for each entry. I can see one
+directory (docs) and two regular files (fileA.txt, fileB.txt) that make
+up my current workspace.
+
+
+------------------------------------------------------------------------
+5. NETWORK CONNECTIVITY VERIFICATION
+------------------------------------------------------------------------
+
+$ ping -c 3 8.8.8.8
+PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
+64 bytes from 8.8.8.8: icmp_seq=1 ttl=112 time=62.6 ms
+64 bytes from 8.8.8.8: icmp_seq=2 ttl=112 time=63.7 ms
+64 bytes from 8.8.8.8: icmp_seq=3 ttl=112 time=73.3 ms
+
+--- 8.8.8.8 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2004ms
+rtt min/avg/max/mdev = 62.598/66.546/73.293/4.793 ms
+
+Explanation: `ping -c 3 8.8.8.8` sends three ICMP echo requests to
+Google's public DNS server to test outbound connectivity. 0% packet
+loss and consistent ~63-73 ms round-trip times confirm the machine has
+working, stable Internet access.
+
+
+------------------------------------------------------------------------
+SUPPORTING COMMANDS
+------------------------------------------------------------------------
+
+$ hostname
+Senorita
+
+Explanation: `hostname` returns the machine's network name, useful for
+identifying the host in a multi-server environment.
+
+$ uname -a
+Linux Senorita 6.6.87.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC
+Thu Jun  5 18:30:46 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+
+Explanation: `uname -a` prints the kernel name, version and hardware
+architecture (x86_64), confirming the underlying OS and platform.
+
+
+------------------------------------------------------------------------
+OBSERVATIONS (3-5 lines)
+------------------------------------------------------------------------
+- I am authenticated as "your_dad" (uid 1000) with sudo and docker
+  privileges, so I have administrative capability when required.
+- My interactive environment is the Bash shell running under Ubuntu
+  22.04.5 LTS on host "Senorita".
+- The workspace directory is clean and contains only the expected
+  starter files/folders.
+- Network connectivity is healthy: all ping packets returned with 0%
+  loss, so I can reach external company resources.
+========================================================================

@@ -1,0 +1,147 @@
+========================================================================
+QUESTION 3 - FILE SYSTEM AND LINK ANALYSIS
+Link_Analysis_Report.txt
+========================================================================
+System: Ubuntu 22.04.5 LTS  |  User: your_dad  |  FS: ext4
+------------------------------------------------------------------------
+
+SCENARIO
+A developer accidentally deleted a file and wants to understand how
+Linux links work. I created a file, a hard link and a symbolic link,
+then investigated their behaviour, including what happens when the
+original file is deleted.
+
+
+------------------------------------------------------------------------
+1. CREATE THE ORIGINAL FILE
+------------------------------------------------------------------------
+
+$ echo "This is the original file content." > original.txt
+$ cat original.txt
+This is the original file content.
+
+Explanation: I created a regular file with known content using output
+redirection. `cat` confirms the file holds the expected text, giving me
+a baseline to test the links against.
+
+
+------------------------------------------------------------------------
+2. CREATE A HARD LINK AND A SYMBOLIC LINK
+------------------------------------------------------------------------
+
+$ ln original.txt hardlink.txt
+Explanation: `ln` (without -s) creates a hard link - a second directory
+entry pointing to the SAME inode as original.txt, not a copy.
+
+$ ln -s original.txt symlink.txt
+Explanation: `ln -s` creates a symbolic (soft) link - a small special
+file that merely stores the path "original.txt" as a pointer.
+
+
+------------------------------------------------------------------------
+3. INODE NUMBERS OF ALL FILES
+------------------------------------------------------------------------
+
+$ ls -li
+4655 -rw-r--r-- 2 your_dad your_dad 35 Jul  3 15:15 hardlink.txt
+4655 -rw-r--r-- 2 your_dad your_dad 35 Jul  3 15:15 original.txt
+8520 lrwxrwxrwx 1 your_dad your_dad 12 Jul  3 15:15 symlink.txt -> original.txt
+
+Explanation: The first column is the inode number. original.txt and
+hardlink.txt share inode 4655 and both show a link count of 2, proving
+they are the same physical file. symlink.txt has a DIFFERENT inode
+(8520), a size of just 12 bytes (the length of the path it stores) and
+its type is 'l' (link).
+
+
+------------------------------------------------------------------------
+4. METADATA COLLECTED WITH stat
+------------------------------------------------------------------------
+
+$ stat original.txt
+  File: original.txt
+  Size: 35         Blocks: 8          IO Block: 4096   regular file
+Device: 830h/2096d Inode: 4655        Links: 2
+Access: (0644/-rw-r--r--)  Uid: (1000/your_dad)   Gid: (1000/your_dad)
+
+Explanation: `stat` confirms inode 4655 has "Links: 2", meaning two
+names (original.txt and hardlink.txt) reference this one inode. The link
+count is the key metadata that keeps the data alive.
+
+
+------------------------------------------------------------------------
+5. READING CONTENT THROUGH ALL THREE NAMES (BEFORE DELETION)
+------------------------------------------------------------------------
+
+$ cat original.txt   -> This is the original file content.
+$ cat hardlink.txt   -> This is the original file content.
+$ cat symlink.txt    -> This is the original file content.
+
+Explanation: All three names return identical content while the original
+exists. The hard link reaches the data directly via the shared inode;
+the symlink reaches it indirectly by resolving the stored path.
+
+
+------------------------------------------------------------------------
+6. EFFECT OF DELETING THE ORIGINAL FILE
+------------------------------------------------------------------------
+
+$ rm original.txt
+$ ls -li
+4655 -rw-r--r-- 1 your_dad your_dad 35 Jul  3 15:15 hardlink.txt
+8520 lrwxrwxrwx 1 your_dad your_dad 12 Jul  3 15:15 symlink.txt -> original.txt
+
+Explanation: After deleting original.txt, the hard link's link count
+dropped from 2 to 1, but inode 4655 and its data still exist because a
+name still references it. The symlink still points to "original.txt",
+which no longer exists.
+
+$ cat hardlink.txt
+This is the original file content.
+
+Explanation: The hard link STILL returns the full content - deleting the
+original only removed one name, not the underlying data. This is why
+hard links protect against accidental deletion.
+
+$ cat symlink.txt
+cat: symlink.txt: No such file or directory
+
+Explanation: The symbolic link is now BROKEN (dangling) because its
+target path was removed. A symlink has no copy of the data; once the
+target is gone it resolves to nothing.
+
+$ file hardlink.txt symlink.txt
+hardlink.txt: ASCII text
+symlink.txt:  broken symbolic link to original.txt
+
+Explanation: `file` classifies hardlink.txt as normal ASCII text but
+explicitly labels symlink.txt a "broken symbolic link", confirming the
+different failure behaviour of the two link types.
+
+
+------------------------------------------------------------------------
+COMPARISON: HARD LINK vs SYMBOLIC LINK
+------------------------------------------------------------------------
+                     HARD LINK                 SYMBOLIC LINK
+Inode              Same as original           Own separate inode
+Points to          The inode (data)           A path/filename
+Size               Same as file               Length of the path text
+Survives original  YES - data persists        NO - becomes broken
+  deletion
+Cross-filesystem   Not allowed                Allowed
+Can link a dir     No (normally)              Yes
+
+
+------------------------------------------------------------------------
+CONCLUSIONS / SUMMARY OF FINDINGS
+------------------------------------------------------------------------
+- A hard link is a true second name for the same inode; the file's data
+  survives as long as at least one hard link remains, so it offers
+  resilience against accidental deletion of the original name.
+- A symbolic link is only a pointer to a path; if that path disappears
+  the link breaks and the data is unrecoverable through it.
+- Inode numbers are the definitive test: identical inode = hard link,
+  different inode = symlink (or separate file).
+- For the developer's problem, keeping a hard link would have preserved
+  the data, whereas a symlink would not have.
+========================================================================

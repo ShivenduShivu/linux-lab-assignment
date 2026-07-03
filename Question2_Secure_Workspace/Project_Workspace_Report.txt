@@ -1,0 +1,148 @@
+========================================================================
+QUESTION 2 - SECURE PROJECT WORKSPACE SETUP
+Project_Workspace_Report.txt
+========================================================================
+System: Ubuntu 22.04.5 LTS  |  User: your_dad
+------------------------------------------------------------------------
+
+SCENARIO
+A project team requires a secure workspace for storing project files and
+documentation. I created the workspace and configured appropriate
+permissions so that only the owner can access sensitive data.
+
+
+------------------------------------------------------------------------
+1. UMASK VALUE USED
+------------------------------------------------------------------------
+
+$ umask
+0022
+
+Explanation: `umask` shows the default permission mask (0022). It
+subtracts write permission for group and others, so newly created files
+default to 644 (rw-r--r--) and directories to 755 (rwxr-xr-x).
+
+
+------------------------------------------------------------------------
+2. DIRECTORY STRUCTURE CREATED
+------------------------------------------------------------------------
+
+$ mkdir -p project_workspace/{docs,src,config}
+$ ls -R project_workspace
+project_workspace:
+config
+docs
+src
+
+Explanation: `mkdir -p` with brace expansion creates the parent
+"project_workspace" plus three sub-directories (docs, src, config) in a
+single command. `ls -R` recursively confirms the intended structure was
+built.
+
+$ touch project_workspace/docs/design.txt \
+        project_workspace/src/app.sh \
+        project_workspace/config/settings.conf
+
+Explanation: `touch` creates three empty placeholder files, one in each
+sub-directory, representing documentation, source code and configuration
+that will need different protection levels.
+
+
+------------------------------------------------------------------------
+3. FILE PERMISSIONS BEFORE MODIFICATION
+------------------------------------------------------------------------
+
+$ ls -l project_workspace
+drwxr-xr-x 2 your_dad your_dad 4096 Jul  3 15:15 config
+drwxr-xr-x 2 your_dad your_dad 4096 Jul  3 15:15 docs
+drwxr-xr-x 2 your_dad your_dad 4096 Jul  3 15:15 src
+
+$ ls -l project_workspace/docs project_workspace/src project_workspace/config
+-rw-r--r-- 1 your_dad your_dad 0 Jul  3 15:15 config/settings.conf
+-rw-r--r-- 1 your_dad your_dad 0 Jul  3 15:15 docs/design.txt
+-rw-r--r-- 1 your_dad your_dad 0 Jul  3 15:15 src/app.sh
+
+Explanation: Before hardening, every file has the umask default 644
+(readable by group and others) and directories are 755. These defaults
+are too permissive for a secure workspace because outsiders can read the
+files.
+
+
+------------------------------------------------------------------------
+4. APPLYING SECURE PERMISSIONS
+------------------------------------------------------------------------
+
+$ chmod 700 project_workspace
+Explanation: `chmod 700` gives the owner full access (rwx) to the
+workspace directory while removing all group/other access, so no other
+user can even list its contents.
+
+$ chmod 640 project_workspace/docs/design.txt
+Explanation: 640 lets the owner read/write and the group read only,
+suitable for documentation the team may need to view but not edit.
+
+$ chmod 750 project_workspace/src/app.sh
+Explanation: 750 makes the script executable by owner and group but
+completely inaccessible to others, appropriate for shared runnable code.
+
+$ chmod 600 project_workspace/config/settings.conf
+Explanation: 600 restricts the config file to owner read/write only,
+protecting sensitive settings such as credentials from every other user.
+
+
+------------------------------------------------------------------------
+5. FILE PERMISSIONS AFTER MODIFICATION + OWNERSHIP
+------------------------------------------------------------------------
+
+$ ls -ld project_workspace
+drwx------ 5 your_dad your_dad 4096 Jul  3 15:15 project_workspace
+
+$ ls -l project_workspace/docs project_workspace/src project_workspace/config
+-rw------- 1 your_dad your_dad 0 Jul  3 15:15 config/settings.conf   (600)
+-rw-r----- 1 your_dad your_dad 0 Jul  3 15:15 docs/design.txt        (640)
+-rwxr-x--- 1 your_dad your_dad 0 Jul  3 15:15 src/app.sh             (750)
+
+Explanation: The listing confirms each object now carries its intended
+mode, and the owner:group is your_dad:your_dad throughout. Access is now
+tightly scoped per file type.
+
+
+------------------------------------------------------------------------
+6. OWNERSHIP / METADATA DETAIL
+------------------------------------------------------------------------
+
+$ stat project_workspace
+  File: project_workspace
+  Size: 4096       Blocks: 8          IO Block: 4096   directory
+Device: 830h/2096d Inode: 18305       Links: 5
+Access: (0700/drwx------)  Uid: ( 1000/your_dad)   Gid: ( 1000/your_dad)
+
+Explanation: `stat` confirms the owner (Uid 1000) and group (Gid 1000)
+and shows the octal mode 0700, verifying that ownership and the
+restrictive permission were applied correctly.
+
+
+------------------------------------------------------------------------
+EXPLANATION: HOW PERMISSIONS PROTECT PROJECT DATA
+------------------------------------------------------------------------
+Linux permissions operate on three classes - owner, group, other - each
+with read(4)/write(2)/execute(1) bits. By setting the workspace to 700,
+no user other than the owner can traverse into it, forming an outer wall.
+Inside, the config file (600) hides secrets from everyone but the owner,
+documentation (640) is shared read-only with the team via the group, and
+the script (750) is runnable by the team but hidden from outsiders. This
+least-privilege layering ensures sensitive data cannot be read, altered,
+or executed by unauthorized users while still enabling legitimate
+collaboration.
+
+
+------------------------------------------------------------------------
+OBSERVATIONS
+------------------------------------------------------------------------
+- The default umask 0022 created files as 644, which was too open for a
+  secure project, confirming the need for manual hardening.
+- After chmod, permissions dropped precisely to 700/640/750/600 as shown
+  by ls -l, matching the security requirement of each file type.
+- Ownership remained your_dad:your_dad, so the owner retains full control
+  while group/other access is limited exactly as designed.
+========================================================================

@@ -1,0 +1,23 @@
+# Question 2 - Secure Project Workspace Setup
+
+umask                                                    # show default mask
+mkdir -p project_workspace/{docs,src,config}             # create structure
+ls -R project_workspace                                  # verify structure
+touch project_workspace/docs/design.txt \
+      project_workspace/src/app.sh \
+      project_workspace/config/settings.conf             # create files
+
+# permissions BEFORE
+ls -l project_workspace
+ls -l project_workspace/docs project_workspace/src project_workspace/config
+
+# harden permissions
+chmod 700 project_workspace
+chmod 640 project_workspace/docs/design.txt
+chmod 750 project_workspace/src/app.sh
+chmod 600 project_workspace/config/settings.conf
+
+# permissions AFTER + ownership
+ls -ld project_workspace
+ls -l project_workspace/docs project_workspace/src project_workspace/config
+stat project_workspace
